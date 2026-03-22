@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe | Ultimate Strategy Suite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2fe;
+            --secondary: #f62681;
+            --bg: #050505;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+        body {
+            background: radial-gradient(circle at center, #1e293b 0%, #050505 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Poppins', sans-serif;
+            color: white;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 25px;
+            width: 95%;
+            max-width: 1200px;
+        }
+
+        .main-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 5px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+
+        /* 🕹️ GRID */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 110px);
+            grid-template-rows: repeat(3, 110px);
+            gap: 15px;
+            justify-content: center;
+            margin: 25px 0;
+        }
+
+        .tile {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            cursor: pointer;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .tile:hover:not(.taken) {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .tile.x { color: var(--primary); text-shadow: 0 0 15px var(--primary); }
+        .tile.o { color: var(--secondary); text-shadow: 0 0 15px var(--secondary); }
+        .tile.winner { background: var(--primary); color: #000; }
+
+        /* 📜 STEP TRACKER SIDEBAR */
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+        .panel { 
+            background: var(--glass); 
+            border-radius: 25px; 
+            padding: 20px; 
+            border: 1px solid var(--border);
+            max-height: 500px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .step-list {
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 5px;
+        }
+
+        .step-item {
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 8px;
+            padding: 10px 15px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid transparent;
+            transition: 0.2s;
+        }
+
+        .step-item:hover { border-color: var(--primary); background: rgba(0, 242, 254, 0.1); }
+        .step-item b { color: var(--primary); }
+
+        /* 🔘 UI BUTTONS */
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 15px;
+            border: none;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            background: var(--primary);
+            color: #050505;
+            transition: 0.3s;
+        }
+        .btn:hover { transform: scale(1.02); filter: brightness(1.2); }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <main class="main-card">
+        <h1>NEON GRID</h1>
+        <div id="status" style="margin-bottom: 20px; opacity: 0.8;">Waiting for Move...</div>
+
+        <div class="grid" id="board">
+            <div class="tile" data-index="0"></div>
+            <div class="tile" data-index="1"></div>
+            <div class="tile" data-index="2"></div>
+            <div class="tile" data-index="3"></div>
+            <div class="tile" data-index="4"></div>
+            <div class="tile" data-index="5"></div>
+            <div class="tile" data-index="6"></div>
+            <div class="tile" data-index="7"></div>
+            <div class="tile" data-index="8"></div>
+        </div>
+
+        <button class="btn" onclick="resetGame()">RESTART ARENA</button>
+    </main>
+
+    <aside class="sidebar">
+        <div class="panel">
+            <h3 style="font-family: 'Orbitron'; font-size: 0.7rem; margin-bottom: 15px; letter-spacing: 2px;">LIVE STEP TRACKER</h3>
+            <ul class="step-list" id="step-tracker">
+                </ul>
+        </div>
+    </aside>
+</div>
+
+<script>
+    let board = Array(9).fill("");
+    let isGameActive = true;
+    let moveHistory = [];
+    const human = "X", ai = "O";
+    const winConditions = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+    // 🧠 MINIMAX AI
+    function minimax(newBoard, depth, isMax) {
+        if (checkWin(newBoard, ai)) return 10 - depth;
+        if (checkWin(newBoard, human)) return depth - 10;
+        if (!newBoard.includes("")) return 0;
+
+        if (isMax) {
+            let best = -Infinity;
+            for (let i = 0; i < 9; i++) {
+                if (newBoard[i] === "") {
+                    newBoard[i] = ai;
+                    best = Math.max(best, minimax(newBoard, depth + 1, false));
+                    newBoard[i] = "";
+                }
+            }
+            return best;
+        } else {
+            let best = Infinity;
+            for (let i = 0; i < 9; i++) {
+                if (newBoard[i] === "") {
+                    newBoard[i] = human;
+                    best = Math.min(best, minimax(newBoard, depth + 1, true));
+                    newBoard[i] = "";
+                }
+            }
+            return best;
+        }
+    }
+
+    function checkWin(b, p) {
+        return winConditions.some(line => line.every(idx => b[idx] === p));
+    }
+
+    function addStep(player, index) {
+        const row = Math.floor(index / 3) + 1;
+        const col = (index % 3) + 1;
+        const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        
+        moveHistory.push({ player, index, time });
+
+        const li = document.createElement('li');
+        li.className = 'step-item';
+        li.innerHTML = `<span><b>Step ${moveHistory.length}:</b> ${player} at (${row}, ${col})</span> <small>${time}</small>`;
+        document.getElementById('step-tracker').prepend(li);
+    }
+
+    function handleMove(idx) {
+        if (board[idx] !== "" || !isGameActive) return;
+
+        // Human Turn
+        makeMove(idx, human);
+
+        if (isGameActive) {
+            setTimeout(() => {
+                let bestScore = -Infinity, move;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === "") {
+                        board[i] = ai;
+                        let score = minimax(board, 0, false);
+                        board[i] = "";
+                        if (score > bestScore) { bestScore = score; move = i; }
+                    }
+                }
+                makeMove(move, ai);
+            }, 500);
+        }
+    }
+
+    function makeMove(idx, player) {
+        board[idx] = player;
+        const tile = document.querySelector(`[data-index='${idx}']`);
+        tile.innerText = player;
+        tile.classList.add(player.toLowerCase(), 'taken');
+        
+        addStep(player, idx);
+
+        if (checkWin(board, player)) {
+            isGameActive = false;
+            document.getElementById('status').innerText = `PLAYER ${player} WINS!`;
+            highlightWin(player);
+        } else if (!board.includes("")) {
+            isGameActive = false;
+            document.getElementById('status').innerText = "IT'S A DRAW!";
+        }
+    }
+
+    function highlightWin(player) {
+        winConditions.forEach(line => {
+            if (line.every(i => board[i] === player)) {
+                line.forEach(i => document.querySelector(`[data-index='${i}']`).classList.add('winner'));
+            }
+        });
+    }
+
+    function resetGame() {
+        board = Array(9).fill("");
+        moveHistory = [];
+        isGameActive = true;
+        document.getElementById('status').innerText = "Ready to Play";
+        document.getElementById('step-tracker').innerHTML = "";
+        document.querySelectorAll('.tile').forEach(t => {
+            t.innerText = "";
+            t.className = 'tile';
+        });
+    }
+
+    document.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => handleMove(t.dataset.index)));
+</script>
+</body>
+</html>
