@@ -1,4 +1,4 @@
-# **NEON GRID | ULTIMATE STRATEGY SUITE** ⚡
+# **Tic-Tac-Toe** ⚡
 
 **Neon Grid** is a high-octane, **cyberpunk-inspired** reimagining of the classic Tic-Tac-Toe. Built with a focus on **sleek UI/UX** and sophisticated logic, it pits human players against an **unbeatable machine intelligence** in a glassmorphic digital arena.
 
